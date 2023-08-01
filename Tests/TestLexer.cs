@@ -25,7 +25,7 @@ public class TestLexer
         Lexer l = new Lexer("blob doko \"lorem noger;");
         l.GetNextToken();
         l.GetNextToken();
-        Assert.Raises(l.GetNextToken(), LexingError);
+        Assert.Throws<LexingError>(l.GetNextToken);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class TestLexer
         Assert.Equal(l.GetNextToken(), new Token(Tokens.FUNCTION, "function"));
         Assert.Equal(l.GetNextToken(), new Token(Tokens.ID, "a"));
         Assert.Equal(l.GetNextToken(), new Token(Tokens.LPAREN, "("));
-        Assert.Equal(l.GetNextToken(), new Token(Tokens.ID, "a"));
+        Assert.Equal(l.GetNextToken(), new Token(Tokens.ID, "n"));
         Assert.Equal(l.GetNextToken(), new Token(Tokens.RPAREN, ")"));
         Assert.Equal(l.GetNextToken(), new Token(Tokens.FINLINE, "=>"));
         Assert.Equal(l.GetNextToken(), new Token(Tokens.INTEGER, "5"));
