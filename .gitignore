@@ -1,0 +1,9 @@
+# cshart
+**/bin/*
+**/obj/*
+# vim
+*~
+*.swp
+*.swo
+
+
