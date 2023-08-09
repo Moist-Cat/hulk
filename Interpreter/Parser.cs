@@ -13,6 +13,18 @@ public class NameError: Exception {
     public NameError(string message, Exception inner): base(message, inner) {}
 }
 
+public class UnexpectedToken: Exception {
+    public UnexpectedToken() {}
+    public UnexpectedToken(string message): base(message) {}
+    public UnexpectedToken(string message, Exception inner): base(message, inner) {}
+}
+
+public class SyntaxError: Exception {
+    public SyntaxError() {}
+    public SyntaxError(string message): base(message) {}
+    public SyntaxError(string message, Exception inner): base(message, inner) {}
+}
+
 
 public class Context : Dictionary<string, AST> {
 
@@ -219,13 +231,13 @@ public class VariableDeclaration : AST {
 public class Variable : AST {
 
     public string name;
-    public AST expression;
 
-    public Variable(string name, AST expression) {
+    public Variable(string name) {
         this.name = name;
     }
 
     public override dynamic Eval(Context ctx) {
+        // should be a literal
         return ctx[this.name].Eval(ctx);
         return null;
     }
@@ -283,7 +295,7 @@ public class FunctionDeclaration: AST {
      }
 }
 
-class Function : AST {
+public class Function : AST {
     public string name;
     public BlockNode args;
 
@@ -313,7 +325,7 @@ class Function : AST {
     }
 }
 
-class Lambda : AST {
+public class Lambda : AST {
     // let-in expression
 
     public BlockNode variables;
@@ -338,15 +350,353 @@ class Lambda : AST {
     }
 }
 
-public class Parser {
+public class Conditional : AST {
+    AST hipotesis;
+    BlockNode tesis;
+    BlockNode antithesis;
 
-    public Parser(Lexer lexer) {//XXX}
+    public Conditional(
+        AST hipotesis,
+        BlockNode tesis,
+        BlockNode antithesis
+    ) {
+        this.hipotesis = hipotesis;
+        this.tesis = tesis;
+        this.antithesis = antithesis;
+   }
+
+    public override dynamic Eval(Context ctx) {
+        bool res = this.hipotesis.Eval(ctx).ToBool();
+        if (res) {
+            return this.tesis.Eval(ctx);
+        }
+        return this.antithesis.Eval(ctx);
+    } 
+}
+
+public class Parser {
+    Lexer lexer;
+    Token current_token;
+
+    public Parser(Lexer lexer) {
+        this.lexer = lexer;
+        this.current_token = this.lexer.GetNextToken();
+    }
+
+    public void Error(Exception exception) {
+        Console.WriteLine($"Error parsing line {this.lexer.line} col {this.lexer.column}");
+        // XXX write last line
+        Console.WriteLine(this.lexer.text);
+        for (int i = 0; i < this.lexer.column - 1; i++) {
+            Console.Write(" "); 
+        }
+        Console.Write("^");
+        Console.WriteLine(); 
+        throw exception;
+    }
+
+    public void Eat(string token_type) {
+        if (this.current_token.type == token_type) {
+            this.current_token = this.lexer.GetNextToken();
+        }
+        else {
+            this.Error(new UnexpectedToken($"Expected {token_type} found {this.current_token.type}."));
+        }
+    }
+
+    public BlockNode Arguments() {
+        if (this.current_token.type != Tokens.LPAREN) {
+            return null;
+        }
+
+        this.Eat(Tokens.LPAREN);
+        List<AST> args = new List<AST>();
+        if (this.current_token.type != Tokens.LPAREN) {
+            this.Eat(Tokens.RPAREN);
+            return new BlockNode(new List<AST>());
+        }
+
+       args.Add(this.Expr());
+       while (this.current_token.type == Tokens.COMMA) {
+           this.Eat(Tokens.COMMA);
+           args.Add(this.Expr());
+       }
+       this.Eat(Tokens.RPAREN);
+
+       return new BlockNode(new List<AST>());
+    }
+
+    public AST Namespace() {
+        string name = this.current_token.val;
+        AST node;
+
+        this.Eat(Tokens.ID);
+        BlockNode args = this.Arguments();
+        if (args is not null) {
+            node = new Function(name, args);
+        }
+        else {
+            node = new Variable(name);
+        }
+        return node;
+    }
+
+    public Lambda Letin() {
+        // meme lambda-like aberration with bizarre use-cases
+        this.Eat(Tokens.LET);
+        BlockNode variables = this.Assignment();
+        this.Eat(Tokens.IN);
+
+        return new Lambda(variables, this.Expr());
+    }
+
+    public BlockNode Assignment() {
+        List<string> names = new List<string>();
+        List<AST> variables = new List<AST>();
+
+        string name = this.current_token.val;
+        names.Add(name);
+
+        this.Eat(Tokens.ID);
+        this.Eat(Tokens.ASSIGN);
+        AST val = this.Expr();
+
+        VariableDeclaration variable = new VariableDeclaration(name, val);
+        variables.Add(variable);
+
+        while (this.current_token.type == Tokens.COMMA) {
+            this.Eat(Tokens.COMMA);
+            name = this.current_token.val;
+            names.Add(name);
+
+            this.Eat(Tokens.ID);
+            this.Eat(Tokens.ASSIGN);
+            val = this.Expr();
+
+            variable = new VariableDeclaration(name, val);
+            variables.Add(variable);
+        }
+
+        BlockNode multi_decl = new BlockNode(variables);
+
+        return multi_decl;
+    }
+
+    public BlockNode Declaration() {
+        this.Eat(Tokens.VAR);
+
+        return this.Assignment();
+    }
+
+    public AST Function() {
+        this.Eat(Tokens.FUNCTION);
+        string name = this.current_token.val;
+        this.Eat(Tokens.ID);
+        BlockNode args = this.Arguments();
+
+        if (this.current_token.type == Tokens.FINLINE) {
+            this.Eat(Tokens.FINLINE);
+            // args are variables so we can use them here too
+            return new FunctionDeclaration(name, args, this.Expr());
+        }
+        // XXX normal fun
+        return null;
+    }
+
+    public Conditional ConditionalStmt() {
+        this.Eat(Tokens.IF);
+
+        this.Eat(Tokens.LPAREN);
+        AST hipotesis = this.Expr();
+        this.Eat(Tokens.RPAREN);
+
+        AST tesis = this.Expr();
+
+        this.Eat(Tokens.ELSE);
+
+        AST antithesis = this.Expr();
+
+        return new Conditional(
+            hipotesis,
+            new BlockNode(new List<AST>{tesis}),
+            new BlockNode(new List<AST>{antithesis})
+        );
+    }
+
+    public Literal LiteralNode() {
+        Token token = this.current_token;
+        if (token.type == Tokens.STRING) {
+            this.Eat(Tokens.STRING);
+            return new StringLiteral(token.val);
+        }
+        else if (token.type == Tokens.INTEGER) {
+            this.Eat(Tokens.INTEGER);
+            return new IntLiteral(Convert.ToInt32(token.val));
+        }
+        else if (token.type == Tokens.FLOAT) {
+            this.Eat(Tokens.FLOAT);
+            return new FloatLiteral(Convert.ToSingle(token.val));
+        }
+        // else
+        this.Error(new Exception($"Invalid literal {token.val} {token.type}"));
+        return null;
+    }
+
+    public AST Term() {
+        AST node = this.Factor();
+
+        while (Lexer.OPERATIONS.Contains(this.current_token.type)) {
+            Token token = this.current_token;
+            Type ast = null;
+            if (token.type == Tokens.MULT) {
+                this.Eat(Tokens.MULT);
+                ast = typeof(Mult);
+            }
+            else if (token.type == Tokens.DIV) {
+                this.Eat(Tokens.DIV);
+                ast = typeof(Division);
+            }
+            else if (token.type == Tokens.MODULO) {
+                this.Eat(Tokens.MODULO);
+                ast = typeof(Modulo);
+            }
+            else if (token.type == Tokens.EXP) {
+                this.Eat(Tokens.EXP);
+                ast = typeof(Exp);
+            }
+
+            AST[] args = new AST[] {node, this.Factor()};
+
+            node = (AST) Activator.CreateInstance(
+              type: ast,
+              args: args
+            );
+        }
+
+        return node;
+    }
+
+    public AST Factor() {
+        Token token = this.current_token;
+        AST node = null;
+
+        if (Lexer.LITERALS.Contains(token.type)) {
+            node = this.LiteralNode();
+        }
+        else if (token.type == Tokens.LET) {
+            node = this.Letin();
+        }
+        else if (token.type == Tokens.LPAREN) {
+            this.Eat(Tokens.LPAREN);
+            node = this.Expr();
+            this.Eat(Tokens.RPAREN);
+        }
+        else if (token.type == Tokens.IF) {
+            node = this.ConditionalStmt();
+        }
+        else if (token.type == Tokens.ID) {
+            node = this.Namespace();
+        }
+        else {
+            this.Error(new Exception(token.val));
+        }
+
+        return node;
+    }
+
+    public AST Expr() {
+        AST node = this.Term();
+
+        while (new HashSet<string>{Tokens.PLUS, Tokens.MINUS}.Union(Lexer.CONDITIONALS).Contains(this.current_token.type)) {
+            Token token = this.current_token;
+            Type ast = null;
+            if (token.type == Tokens.PLUS) {
+                this.Eat(Tokens.PLUS);
+                ast = typeof(Sum);
+            }
+            else if (token.type == Tokens.MINUS) {
+                this.Eat(Tokens.MINUS);
+                ast = typeof(Substraction);
+            }
+            else if (token.type == Tokens.EQUALS) {
+                this.Eat(Tokens.EQUALS);
+                ast = typeof(Equals);
+            }
+            else if (token.type == Tokens.HIGHER) {
+                this.Eat(Tokens.HIGHER);
+                ast = typeof(Higher);
+            }
+            else if (token.type == Tokens.LOWER) {
+                this.Eat(Tokens.LOWER);
+                ast = typeof(Lower);
+            }
+            else {
+                this.Error(new Exception("Ehhhh??? まじ？？"));
+            }
+
+            node = (AST) Activator.CreateInstance(ast, args: new Object[] {node, this.Factor()});
+        }
+
+        return node;
+    }
+
+    public AST _Parse() {
+        AST node;
+
+        if (this.current_token.type == Tokens.VAR) {
+            node = this.Declaration();
+        }
+        else if (this.current_token.type == Tokens.FUNCTION) {
+            node = this.Function();
+        }
+        else {
+            node = this.Expr();
+        }
+        if (this.current_token.type != Tokens.END) {
+            this.Error(new SyntaxError("Expected ';'"));
+        }
+
+        return node;
+    }
+
+    public AST Parse() {
+        List<AST> nodes = new List<AST>();
+        AST node;
+
+        while (this.current_token.type != Tokens.EOF) {
+            node = this._Parse();
+            this.Eat(Tokens.END);
+            nodes.Add(node);
+        }
+
+        return new BlockNode(nodes);
+    }
 }
 
 public class Interpreter {
-    public Interpreter(Parser parser) {}
+    Context GLOBAL_SCOPE = new Context();
+    Parser parser;
+    AST _tree;
+
+    public Interpreter(Parser parser) {
+        this.parser = parser;
+        this._tree = null;
+    }
+
+    public AST tree {
+        get {
+            if (this._tree is null) {
+                this._tree = this.parser.Parse();
+            }
+            return this._tree;
+        }
+        set {}
+    }
 
     public dynamic Interpret() {
-       return 1; 
+        if (this.tree is null) {
+            return "";
+        }
+        return this.tree.Eval(this.GLOBAL_SCOPE);
     }
 }

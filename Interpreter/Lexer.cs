@@ -103,6 +103,12 @@ public class Lexer {
 
     public static HashSet<string> LITERALS = new HashSet<string>{Tokens.STRING, Tokens.INTEGER, Tokens.FLOAT};
     public static HashSet<string> CONDITIONALS = new HashSet<string>{Tokens.IF, Tokens.ELSE};
+    public static HashSet<string> OPERATIONS = new HashSet<string>{
+        Tokens.MULT,
+        Tokens.DIV,
+        Tokens.MODULO,
+        Tokens.EXP,
+    };
     public static Dictionary<string, Token> RESERVED_KEYWORDS = new Dictionary<string, Token>{
         {"in", new Token(Tokens.IN)},
         {"let", new Token(Tokens.LET)},
