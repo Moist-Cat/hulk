@@ -26,9 +26,9 @@ public class SyntaxError: Exception {
 }
 
 
-public class Context : Dictionary<string, AST> {
+public class Context : Dictionary<string, dynamic> {
 
-    public new AST this[string key] {
+    public dynamic this[string key] {
         get {
             try {
                 return base[key];
@@ -65,27 +65,7 @@ public class Literal: AST {
     }
 }
 
-public class GenericLiteral: Literal {
-    
-    public GenericLiteral(float val) {
-        this._val = val;
-    }
-
-    public GenericLiteral(int val) {
-        this._val = val;
-    }
-
-    public GenericLiteral(bool val) {
-        this._val = val;
-    }
-
-    public GenericLiteral(string val) {
-        this._val = val;
-    }
-}
-
 public class StringLiteral: Literal {
-    string _val;
 
     public StringLiteral(string val) {
         this._val = val;
@@ -93,7 +73,6 @@ public class StringLiteral: Literal {
 }
 
 public class IntLiteral: Literal {
-    int _val;
 
     public IntLiteral(int val) {
         this._val = val;
@@ -101,7 +80,6 @@ public class IntLiteral: Literal {
 }
 
 public class FloatLiteral: Literal {
-    float _val;
 
     public FloatLiteral(float val) {
         this._val = val;
@@ -132,11 +110,24 @@ public class BinaryOperation: AST {
     public virtual dynamic Operation(float a, float b) {
         throw new Exception("Not implemented");
     }
+
+    public virtual dynamic Operation(float a, int b) {
+        return this.Operation(a, (float) b);
+    }
+
+    public virtual dynamic Operation(int a, float b) {
+        return this.Operation((float) a, b);
+    }
+
+    public virtual dynamic Operation(int a, int b) {
+        return this.Operation((float) a, (float) b);
+    }
+
 }
 
 public class Sum : BinaryOperation {
 
-    public Sum(AST left, AST right): base(right, left) {}
+    public Sum(AST left, AST right): base(left, right) {}
    
     public override dynamic Operation(float a, float b) {
         return a + b;
@@ -145,7 +136,7 @@ public class Sum : BinaryOperation {
 
 public class Substraction : BinaryOperation {
 
-    public Substraction(AST left, AST right): base(right, left) {}
+    public Substraction(AST left, AST right): base(left, right) {}
    
     public override dynamic Operation(float a, float b) {
         return a + -b;
@@ -153,7 +144,7 @@ public class Substraction : BinaryOperation {
 }
 public class Division : BinaryOperation {
 
-    public Division(AST left, AST right): base(right, left) {}
+    public Division(AST left, AST right): base(left, right) {}
    
     public override dynamic Operation(float a, float b) {
         return a / b;
@@ -161,7 +152,7 @@ public class Division : BinaryOperation {
 }
 public class Mult : BinaryOperation {
    
-    public Mult(AST left, AST right): base(right, left) {}
+    public Mult(AST left, AST right): base(left, right) {}
 
     public override dynamic Operation(float a, float b) {
         return a * b;
@@ -169,7 +160,7 @@ public class Mult : BinaryOperation {
 }
 public class Modulo : BinaryOperation {
    
-    public Modulo(AST left, AST right): base(right, left) {}
+    public Modulo(AST left, AST right): base(left, right) {}
 
     public override dynamic Operation(float a, float b) {
         return a % b;
@@ -177,7 +168,7 @@ public class Modulo : BinaryOperation {
 }
 public class Exp : BinaryOperation {
 
-    public Exp(AST left, AST right): base(right, left) {}
+    public Exp(AST left, AST right): base(left, right) {}
    
     public override dynamic Operation(float a, float b) {
         return (float) System.Math.Pow(a, b);
@@ -185,7 +176,7 @@ public class Exp : BinaryOperation {
 }
 public class Equals : BinaryOperation {
 
-    public Equals(AST left, AST right): base(right, left) {}
+    public Equals(AST left, AST right): base(left, right) {}
    
     public override dynamic Operation(float a, float b) {
         return a == b;
@@ -193,7 +184,7 @@ public class Equals : BinaryOperation {
 }
 public class Higher : BinaryOperation {
 
-    public Higher(AST left, AST right): base(right, left) {}
+    public Higher(AST left, AST right): base(left, right) {}
    
     public override dynamic Operation(float a, float b) {
         return a > b;
@@ -201,7 +192,7 @@ public class Higher : BinaryOperation {
 }
 public class Lower : BinaryOperation {
 
-    public Lower(AST left, AST right): base(right, left) {}
+    public Lower(AST left, AST right): base(left, right) {}
    
     public override dynamic Operation(float a, float b) {
         return a < b;
@@ -219,7 +210,7 @@ public class VariableDeclaration : AST {
     }
 
     public override dynamic Eval(Context ctx) {
-        ctx[this.name] = new GenericLiteral(this.expression.Eval(ctx));
+        ctx[this.name] = this.expression.Eval(ctx);
         return null;
     }
 
@@ -238,8 +229,7 @@ public class Variable : AST {
 
     public override dynamic Eval(Context ctx) {
         // should be a literal
-        return ctx[this.name].Eval(ctx);
-        return null;
+        return ctx[this.name];
     }
 
     public override string ToString() {
@@ -256,14 +246,14 @@ public class BlockNode: AST {
     }
 
     public override dynamic Eval(Context ctx) {
-        AST bl;
         int counter = blocks.Count();
         foreach(AST block in this.blocks) {
-            bl = block.Eval(ctx);
-            counter -= 1;
-            if (counter == 0) {
+            if (counter == 1) {
+                var bl = block.Eval(ctx);
                 return bl;
             }
+            block.Eval(ctx);
+            counter -= 1;
         }
         return null;
     }
@@ -310,8 +300,10 @@ public class Function : AST {
 
         Context fun_ctx = new Context();
         Variable arg;
+        Console.WriteLine(fun_args.blocks.Count());
         for (int i = 0; i < fun_args.blocks.Count(); i++) {
             arg = (Variable) fun_args.blocks[i];
+            Console.WriteLine(this.args.blocks[i].Eval(ctx));
             fun_ctx[arg.name] = this.args.blocks[i].Eval(ctx);
         }
         // allow recursivity
@@ -366,7 +358,7 @@ public class Conditional : AST {
    }
 
     public override dynamic Eval(Context ctx) {
-        bool res = this.hipotesis.Eval(ctx).ToBool();
+        bool res = Convert.ToBoolean(this.hipotesis.Eval(ctx));
         if (res) {
             return this.tesis.Eval(ctx);
         }
@@ -387,7 +379,7 @@ public class Parser {
         Console.WriteLine($"Error parsing line {this.lexer.line} col {this.lexer.column}");
         // XXX write last line
         Console.WriteLine(this.lexer.text);
-        for (int i = 0; i < this.lexer.column - 1; i++) {
+        for (int i = 0; i < this.lexer.column - 2; i++) {
             Console.Write(" "); 
         }
         Console.Write("^");
@@ -411,7 +403,7 @@ public class Parser {
 
         this.Eat(Tokens.LPAREN);
         List<AST> args = new List<AST>();
-        if (this.current_token.type != Tokens.LPAREN) {
+        if (this.current_token.type == Tokens.RPAREN) {
             this.Eat(Tokens.RPAREN);
             return new BlockNode(new List<AST>());
         }
@@ -423,7 +415,7 @@ public class Parser {
        }
        this.Eat(Tokens.RPAREN);
 
-       return new BlockNode(new List<AST>());
+       return new BlockNode(args);
     }
 
     public AST Namespace() {
@@ -488,7 +480,7 @@ public class Parser {
         return this.Assignment();
     }
 
-    public AST Function() {
+    public AST FunctionDecl() {
         this.Eat(Tokens.FUNCTION);
         string name = this.current_token.val;
         this.Eat(Tokens.ID);
@@ -535,7 +527,7 @@ public class Parser {
         }
         else if (token.type == Tokens.FLOAT) {
             this.Eat(Tokens.FLOAT);
-            return new FloatLiteral(Convert.ToSingle(token.val));
+            return new FloatLiteral((float) Math.Round(Convert.ToSingle(token.val), 4));
         }
         // else
         this.Error(new Exception($"Invalid literal {token.val} {token.type}"));
@@ -598,7 +590,7 @@ public class Parser {
             node = this.Namespace();
         }
         else {
-            this.Error(new Exception(token.val));
+            this.Error(new Exception($"{token.val} is not a valid factor"));
         }
 
         return node;
@@ -631,7 +623,7 @@ public class Parser {
                 ast = typeof(Lower);
             }
             else {
-                this.Error(new Exception("Ehhhh??? まじ？？"));
+                this.Error(new Exception($"Unknown operand: {token.type}"));
             }
 
             node = (AST) Activator.CreateInstance(ast, args: new Object[] {node, this.Factor()});
@@ -647,7 +639,7 @@ public class Parser {
             node = this.Declaration();
         }
         else if (this.current_token.type == Tokens.FUNCTION) {
-            node = this.Function();
+            node = this.FunctionDecl();
         }
         else {
             node = this.Expr();
@@ -697,6 +689,10 @@ public class Interpreter {
         if (this.tree is null) {
             return "";
         }
-        return this.tree.Eval(this.GLOBAL_SCOPE);
+        var eval = this.tree.Eval(this.GLOBAL_SCOPE);
+        if (eval is null) {
+            return "";
+        }
+        return eval;
     }
 }

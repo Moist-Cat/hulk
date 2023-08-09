@@ -6,10 +6,9 @@ class Massa {
     public static void Main(string[] args) {
         Console.Write(">>> ");
          Lexer l = new Lexer(Console.ReadLine());
-         Console.WriteLine(l.GetNextToken());
-         Console.WriteLine(l.GetNextToken());
-         Console.WriteLine(l.GetNextToken());
-         Console.WriteLine(l.GetNextToken());
-         Console.WriteLine(l.GetNextToken());
+         Parser p = new Parser(l);
+	 Interpreter i = new Interpreter(p);
+
+	 Console.WriteLine(i.Interpret());
     }
 }

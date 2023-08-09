@@ -102,7 +102,7 @@ public class Lexer {
     public int column;
 
     public static HashSet<string> LITERALS = new HashSet<string>{Tokens.STRING, Tokens.INTEGER, Tokens.FLOAT};
-    public static HashSet<string> CONDITIONALS = new HashSet<string>{Tokens.IF, Tokens.ELSE};
+    public static HashSet<string> CONDITIONALS = new HashSet<string>{Tokens.EQUALS, Tokens.HIGHER, Tokens.LOWER};
     public static HashSet<string> OPERATIONS = new HashSet<string>{
         Tokens.MULT,
         Tokens.DIV,
@@ -298,6 +298,6 @@ public class Lexer {
 
             return new Token(token_repr);
         }
-        return new Token("EOF", Tokens.EOF);
+        return new Token(Tokens.EOF);
     }
 }

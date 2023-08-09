@@ -1,3 +1,4 @@
+using System;
 using Xunit;
 using Interpreter;
 
@@ -25,7 +26,7 @@ public class TestParser
         Assert.Equal("blob", result);
 
         result = this._Interpret("7.03;");
-        Assert.Equal(7.03, result);
+        Assert.Equal(7.03, Math.Round(result, 3));
     }
 
     [Fact]
@@ -34,7 +35,7 @@ public class TestParser
         Assert.Equal(15, result);
 
         result = this._Interpret("5 + 10.1;");
-        Assert.Equal(15.1, result);
+        Assert.Equal(15.1, Math.Round(result, 3));
 
         result = this._Interpret("5 - 10;");
         Assert.Equal(-5, result);
@@ -76,14 +77,14 @@ public class TestParser
 
     [Fact]
     public void TestLambda() {
-        var result = this._Interpret("7 + (let x = 2 in x * x);;");
+        var result = this._Interpret("7 + (let x = 2 in x * x);");
         Assert.Equal(11, result);
 
         result = this._Interpret("\"blob\";");
         Assert.Equal("blob", result);
 
         result = this._Interpret("7.03;");
-        Assert.Equal(7.03, result);
+        Assert.Equal(7.03, Math.Round(result, 3));
     }
 
     [Fact]
