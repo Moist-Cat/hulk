@@ -64,9 +64,8 @@ public class TestParser
 
     [Fact]
     public void TestBuiltins() {
-        return;
         var result = this._Interpret("log(2);");
-        Assert.Equal(System.Math.Log(2).ToString(), result);
+        Assert.Equal(System.Math.Log(2), result);
     }
 
     [Fact]

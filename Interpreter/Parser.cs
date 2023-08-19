@@ -25,6 +25,12 @@ public class SyntaxError: Exception {
     public SyntaxError(string message, Exception inner): base(message, inner) {}
 }
 
+public class TypeError: Exception {
+    public TypeError() {}
+    public TypeError(string message): base(message) {}
+    public TypeError(string message, Exception inner): base(message, inner) {}
+}
+
 
 public class Context : Dictionary<string, dynamic> {
 
@@ -104,7 +110,15 @@ public class BinaryOperation: AST {
     }
 
     public override dynamic Eval(Context ctx) {
-        return this.Operation(this.left.Eval(ctx), this.right.Eval(ctx));
+        var left = this.left.Eval(ctx);
+        var right = this.right.Eval(ctx);
+        try {
+            return this.Operation(this.left.Eval(ctx), this.right.Eval(ctx));
+        }
+        catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException e) {
+            string msg = $"Unsupported operand type(s) for {this.GetType().Name.ToLower()}: {left.GetType()} and {right.GetType()}";
+            throw new TypeError(msg);
+        }
     }
 
     public virtual dynamic Operation(float a, float b) {
@@ -300,10 +314,8 @@ public class Function : AST {
 
         Context fun_ctx = new Context();
         Variable arg;
-        Console.WriteLine(fun_args.blocks.Count());
         for (int i = 0; i < fun_args.blocks.Count(); i++) {
             arg = (Variable) fun_args.blocks[i];
-            Console.WriteLine(this.args.blocks[i].Eval(ctx));
             fun_ctx[arg.name] = this.args.blocks[i].Eval(ctx);
         }
         // allow recursivity
@@ -590,7 +602,7 @@ public class Parser {
             node = this.Namespace();
         }
         else {
-            this.Error(new Exception($"{token.val} is not a valid factor"));
+            this.Error(new SyntaxError($"Missing expression before {token.val}"));
         }
 
         return node;
@@ -665,14 +677,89 @@ public class Parser {
     }
 }
 
+// builtins
+class PrintBlockNode : BlockNode {
+    public PrintBlockNode(List<AST> blocks) : base(blocks) {}
+
+    public override dynamic Eval(Context ctx) {
+        Console.WriteLine(base.Eval(ctx));
+        return null;
+    }
+}
+
+class Print : FunctionDeclaration {
+
+    public Print() : base(
+        "print",
+        new BlockNode(new List<AST>{new Variable("val")}),
+        new PrintBlockNode(new List<AST>{new Variable("val")})
+    ) {}
+}
+
+class CosBlockNode : BlockNode {
+    public CosBlockNode(List<AST> blocks) : base(blocks) {}
+
+    public override dynamic Eval(Context ctx) {
+        return Math.Cos(base.Eval(ctx));
+    }
+}
+
+class Cos : FunctionDeclaration {
+
+    public Cos() : base(
+        "cos",
+        new BlockNode(new List<AST>{new Variable("val")}),
+        new CosBlockNode(new List<AST>{new Variable("val")})
+    ) {}
+}
+
+class SinBlockNode : BlockNode {
+    public SinBlockNode(List<AST> blocks) : base(blocks) {}
+
+    public override dynamic Eval(Context ctx) {
+        return Math.Sin(base.Eval(ctx));
+    }
+}
+
+class Sin : FunctionDeclaration {
+
+    public Sin() : base(
+        "sin",
+        new BlockNode(new List<AST>{new Variable("val")}),
+        new SinBlockNode(new List<AST>{new Variable("val")})
+    ) {}
+}
+
+class LogBlockNode : BlockNode {
+    public LogBlockNode(List<AST> blocks) : base(blocks) {}
+
+    public override dynamic Eval(Context ctx) {
+        return Math.Log(base.Eval(ctx));
+    }
+}
+
+class Log : FunctionDeclaration {
+
+    public Log() : base(
+        "log",
+        new BlockNode(new List<AST>{new Variable("val")}),
+        new LogBlockNode(new List<AST>{new Variable("val")})
+    ) {}
+}
+
+
 public class Interpreter {
-    Context GLOBAL_SCOPE = new Context();
-    Parser parser;
-    AST _tree;
+    public Context GLOBAL_SCOPE = new Context();
+    public Parser parser;
+    public AST _tree;
+    public BlockNode BUILTINS = new BlockNode(
+        new List<AST>{new Print(), new Cos(), new Sin(), new Log()}
+    );
 
     public Interpreter(Parser parser) {
         this.parser = parser;
         this._tree = null;
+        BUILTINS.Eval(this.GLOBAL_SCOPE);
     }
 
     public AST tree {
@@ -686,10 +773,11 @@ public class Interpreter {
     }
 
     public dynamic Interpret() {
-        if (this.tree is null) {
+        AST tree = this.parser.Parse();
+        if (tree is null) {
             return "";
         }
-        var eval = this.tree.Eval(this.GLOBAL_SCOPE);
+        var eval = tree.Eval(this.GLOBAL_SCOPE);
         if (eval is null) {
             return "";
         }
