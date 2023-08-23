@@ -42,6 +42,7 @@ public static class Tokens {
     public static string  FUNCTION = "function";
     public static string QUOTATION = "\"";
     public static string  COMMA = ",";
+    public static string  NOT = "!";
 
     public static string FromValue(string token1, string token2) {
         FieldInfo[] fields = typeof(Tokens).GetFields();
@@ -102,6 +103,7 @@ public class Lexer {
     public int column;
 
     public static HashSet<string> LITERALS = new HashSet<string>{Tokens.STRING, Tokens.INTEGER, Tokens.FLOAT};
+    public static HashSet<string> UNARY = new HashSet<string>{Tokens.MINUS, Tokens.INTEGER, Tokens.FLOAT};
     public static HashSet<string> CONDITIONALS = new HashSet<string>{Tokens.EQUALS, Tokens.HIGHER, Tokens.LOWER};
     public static HashSet<string> OPERATIONS = new HashSet<string>{
         Tokens.MULT,

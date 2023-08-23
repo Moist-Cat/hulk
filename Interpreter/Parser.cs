@@ -7,25 +7,25 @@ using System.Reflection;
 
 namespace Interpreter;
 
-public class NameError: Exception {
+public class NameError : Exception {
     public NameError() {}
     public NameError(string message): base(message) {}
     public NameError(string message, Exception inner): base(message, inner) {}
 }
 
-public class UnexpectedToken: Exception {
+public class UnexpectedToken : Exception {
     public UnexpectedToken() {}
     public UnexpectedToken(string message): base(message) {}
     public UnexpectedToken(string message, Exception inner): base(message, inner) {}
 }
 
-public class SyntaxError: Exception {
+public class SyntaxError : Exception {
     public SyntaxError() {}
     public SyntaxError(string message): base(message) {}
     public SyntaxError(string message, Exception inner): base(message, inner) {}
 }
 
-public class TypeError: Exception {
+public class TypeError : Exception {
     public TypeError() {}
     public TypeError(string message): base(message) {}
     public TypeError(string message, Exception inner): base(message, inner) {}
@@ -59,7 +59,7 @@ public class AST {
     }
 }
 
-public class Literal: AST {
+public class Literal : AST {
 
     public dynamic _val {
         get;
@@ -78,22 +78,21 @@ public class StringLiteral: Literal {
     }
 }
 
-public class IntLiteral: Literal {
+public class IntLiteral : Literal {
 
     public IntLiteral(int val) {
         this._val = val;
     }
 }
 
-public class FloatLiteral: Literal {
+public class FloatLiteral : Literal {
 
     public FloatLiteral(float val) {
         this._val = val;
     }
 }
 
-public class BoolLiteral: Literal {
-    bool _val;
+public class BoolLiteral : Literal {
 
     public BoolLiteral(bool val) {
         this._val = val;
@@ -210,6 +209,49 @@ public class Lower : BinaryOperation {
    
     public override dynamic Operation(float a, float b) {
         return a < b;
+    }
+}
+
+public class UnaryOperation : AST {
+
+    public AST block;
+
+    public UnaryOperation(AST block) {
+        this.block = block;
+    }
+    
+    public override dynamic Eval(Context ctx) {
+        return Operation(this.block.Eval(ctx));
+    }
+
+    public virtual dynamic Operation(float a) {
+        throw new Exception("Not implemented");
+    }
+
+    public virtual dynamic Operation(bool a) {
+        throw new Exception("Not implemented");
+    }
+}
+
+public class ChangeSign : UnaryOperation {
+
+    public ChangeSign(AST block): base(block) {}
+    
+    public override dynamic Operation(float a) {
+        return -a;
+    }
+}
+
+public class Negate : UnaryOperation {
+
+    public Negate(AST block): base(block) {}
+    
+    public override dynamic Operation(float a) {
+        return this.Operation(Convert.ToBoolean(a));
+    }
+
+    public override dynamic Operation(bool a) {
+        return !a;
     }
 }
 
@@ -541,6 +583,7 @@ public class Parser {
             this.Eat(Tokens.FLOAT);
             return new FloatLiteral((float) Math.Round(Convert.ToSingle(token.val), 4));
         }
+
         // else
         this.Error(new Exception($"Invalid literal {token.val} {token.type}"));
         return null;
@@ -584,7 +627,16 @@ public class Parser {
         Token token = this.current_token;
         AST node = null;
 
-        if (Lexer.LITERALS.Contains(token.type)) {
+        // check unary first
+        if (token.type == Tokens.MINUS) {
+            this.Eat(Tokens.MINUS);
+            node = new ChangeSign(this.Expr());
+        }
+        else if (token.type == Tokens.NOT) {
+            this.Eat(Tokens.NOT);
+            node = new Negate(this.Expr());
+        }
+        else if (Lexer.LITERALS.Contains(token.type)) {
             node = this.LiteralNode();
         }
         else if (token.type == Tokens.LET) {
@@ -747,13 +799,27 @@ class Log : FunctionDeclaration {
     ) {}
 }
 
+// Adding new tokens???
+// nyahahahaha
+class True : VariableDeclaration {
+
+    public True() : base("True", new BoolLiteral(true)) {}
+}
+
+class False : VariableDeclaration {
+
+    public False() : base("False", new BoolLiteral(false)) {}
+}
+
 
 public class Interpreter {
     public Context GLOBAL_SCOPE = new Context();
     public Parser parser;
     public AST _tree;
     public BlockNode BUILTINS = new BlockNode(
-        new List<AST>{new Print(), new Cos(), new Sin(), new Log()}
+        new List<AST>{
+            new Print(), new Cos(), new Sin(), new Log(), new True(), new False()
+        }
     );
 
     public Interpreter(Parser parser) {

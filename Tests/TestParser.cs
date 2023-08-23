@@ -27,6 +27,24 @@ public class TestParser
 
         result = this._Interpret("7.03;");
         Assert.Equal(7.03, Math.Round(result, 3));
+
+        result = this._Interpret("True;");
+        Assert.Equal(true, result);
+    }
+
+    [Fact]
+    public void TestUnary() {
+        var result = this._Interpret("-5;");
+        Assert.Equal(-5, result);
+
+        result = this._Interpret("--(1 + 1);");
+        Assert.Equal(2, result);
+
+        result = this._Interpret("!1;");
+        Assert.Equal(false, result);
+
+	result = this._Interpret("var a = !1;!a;");
+	Assert.Equal(true, result);
     }
 
     [Fact]
