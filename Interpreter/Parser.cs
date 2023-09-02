@@ -294,6 +294,8 @@ public class Variable : AST {
 }
 
 public class BlockNode: AST {
+    // Contains a set of evaluables
+    // only the last block is returned to the interpreter
 
     public List<AST> blocks;
 
@@ -316,7 +318,7 @@ public class BlockNode: AST {
 
     public override string ToString() {
         return this.blocks.ToString();
-     }
+    }
 }
 
 public class FunctionDeclaration: AST {
@@ -387,7 +389,7 @@ public class Lambda : AST {
 
         // https://github.com/matcom/programming/tree/main/projects/hulk#variables
         // "( ... ) Fuera de una expresión let-in las variables dejan de existir. ( ... )"
-        // declare variables inside the scope of the lambda
+        // thus, we declare variables inside the scope of the lambda
         this.variables.Eval(local_ctx);
 
         var res = this.block_statement.Eval(local_ctx);
@@ -799,7 +801,7 @@ class Log : FunctionDeclaration {
     ) {}
 }
 
-// Adding new tokens???
+// Adding new tokens, you say???
 // nyahahahaha
 class True : VariableDeclaration {
 

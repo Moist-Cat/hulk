@@ -5,5 +5,8 @@
 *~
 *.swp
 *.swo
-
+# tex
+*.aux
+*.log
+*.toc
 

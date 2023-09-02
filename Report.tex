@@ -1,0 +1,95 @@
+\documentclass{report}
+
+\usepackage{titlesec}
+
+\titleformat
+{\chapter} % command
+[display] % shape
+{\bfseries\Large\itshape} % format
+{} % label (wow, it's **** nothing!)
+{0.5ex} % sep
+{
+    \rule{\textwidth}{1pt}
+    \vspace{1ex}
+    \centering
+} % before-code
+[
+\vspace{-0.5ex}%
+\rule{\textwidth}{0.3pt}
+] % after-code
+
+
+\titleformat{\section}[wrap]
+{\normalfont\bfseries}
+{\thesection.}{0.5em}{}
+
+\titlespacing{\section}{12pc}{1.5ex plus .1ex minus .2ex}{1pc}
+
+\title{The hulk programming language}
+\author{Luis Ernesto Amat Cárdenas (C-122)}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+\chapter{Lexing}
+\section{Consideraciones generales}
+Para el tokenizado se requiere de dos elementos: una serie de tokens, y un sistema que transforme texto ASCII en tokens con los que el Parser puede trabajar.
+
+\section{Tokens}
+La clase \textbf{Tokens} contiene todos los tipos de tokens que \textbf{HULK} necesita; se hace un emparejamiento llave-valor usando los atributos de clase. \textbf{Tokens} tiene un metodo conveniente (\textbf{FromValue}) para obtener el tipo del token en base a su valor (recibe dos valores porque existen tokens compuestos de multiples caracteres).
+El tipo se le pasa a la clase \textbf{Token} junto con el valor que le corresponda para conformar el token que recibe el parser.
+\section{Lexer}
+\textbf{Lexer} solo recibe texto ASCII como parámetro. Esta clase también se encarga de tener constancia de la posición del cursor (útil a la hora de lanzar excepciones).
+También contiene varios atributos, HashSets que agrupan tipos de tokens para facilitar identificarlos a la hora del ejecutar el proceso de parsing. De no ser por el OOP esctricto de Csharp serían variables globales.
+
+El método más complejo que contiene esta clase es \textbf{GetResult}. Se usa luego que el tipo del token es identificado para obtener el valor que le corresponde (Ej. Al token tipo STRING la cadena que le corresponde). Recibe una condición que se mapea a una expresión regular que detemina si se deben seguir añadiendo caracteres al string que corresponde al valor del token o detenerse e identificar el siguiente token (o finalizar el lexing).
+
+El proceso de lexing completo (usual) sería el siguiente:
+\begin{enumerate}
+    \item{Tomar un caracter y mover el cursor}
+    \item{Identificar el tipo a través de regex}
+    \item{Adquirir el valor que le corresponde usando \textbf{GetResult} (o sea, más regex)}
+    \item{Devolver el token}
+\end{enumerate}
+
+Si no se puede identificar el tipo del token mediante regex se comprueba si el valor del token se puede inferir en base al tipo (Ej. "+" implica PLUS). Else, se lanza una excepción.
+
+\chapter{Parsing}
+
+\section{Consideraciones generales}
+El parser recibe una serie de tokens y se encarga de crear un AST (Abstract Syntax Tree) para el interprete. O sea, pasarle un evaluable al intérprete con el que pueda ejecutar las instrucciones que se programaron
+
+\section{Context}
+
+Clase que se utiliza para mantener el contexto para el intérprete. Montada sobre \textbf{Dictionary[string, Union[Literal, AST]]}. O sea, un diccionario que le hace corresponder namespaces con el valor que le corresponde. Si es una definición le corresponde un evaluable; caso contrario (una variable), un literal.
+
+\section{AST}
+Evaluables. El parser identifica que tipo de AST le corresponde un conjunto de tokens (puede ser solo uno), que es básicamente asociar un comportamiento (que se ejecuta al ser evaluado) al conjunto de tokens.
+El AST se construye con valores que modifican el comportamiento resultante al ser evaluado.
+
+\subsection{Sobre Function y la recursividad}
+La propia definición de la función se referencia dentro del contexto local de esta para permitir la recursividad.
+
+\section{Parser}
+La clase \textbf{Parser} se comporta de la misma manera que \textbf{Lexer}, solo que trabaja con tokens en lugar de caracteres.
+Para identificar a que AST le corresponde cada token primero se identifica si es un statement o una expresión. En el caso de este subset HULK solo tenemos declaración de funciones y variables entre los statements.
+Si es una expresión se utilizan varios métodos para simular el orden operacional de los operadores binarios.
+
+
+\chapter{Interpreting}
+
+\section{Consideraciones generales}
+El intérprete recibe un evaluable (con un valor de retorno, con el propósito de mostrarlo en un REPL de ser necesario). Este simplemente ejecuta el método \textbf{Eval} de dicho evaluable y retorna el resultado.
+También mantiene el contexto global y define los Builtins
+
+\section{Builtins}
+Definiciones que no pueden ser definidas dentro de HULK. ASTs que sirven de puente entre features de Csharp y HULK; esto se implemente para facilitar algunos procesos.
+Ej. print(), True, False, cos(), ...
+
+\chapter{Flujo del programa}
+
+Se le pasa texto al lexer. Este identifica los tokens que son entregados al parser. El parser entrega un evaluable al intérprete que los evalúa en base al contexto global.
+
+\end{document}
