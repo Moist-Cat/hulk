@@ -137,4 +137,12 @@ public class TestParser
         Assert.Equal("doko", result);
     }
 
+    [Fact]
+    public void TestLocalContext() {
+        var result = this._Interpret("function x() => 5; function blob(x) => x;blob(3);");
+	Assert.Equal(3, result);
+        result = this._Interpret("var x = 5; function blob() => x;blob();");
+	Assert.Equal(2, result);
+    }
+
 }

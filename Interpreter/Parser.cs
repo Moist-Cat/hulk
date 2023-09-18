@@ -47,6 +47,15 @@ public class Context : Dictionary<string, dynamic> {
             base[key] = value;
         }
     }
+
+    public Context Clone() {
+        Context ret = new Context();
+
+        foreach(KeyValuePair<string, dynamic> entry in this) {
+            ret.Add(entry.Key, (dynamic) entry.Value);
+        }
+        return ret;
+    }
 }
 
 public class AST {
@@ -356,7 +365,7 @@ public class Function : AST {
         FunctionDeclaration fun_decl = (FunctionDeclaration) ctx[this.name];
         BlockNode fun_args = fun_decl.args;
 
-        Context fun_ctx = new Context();
+        Context fun_ctx = ctx.Clone();
         Variable arg;
         for (int i = 0; i < fun_args.blocks.Count(); i++) {
             arg = (Variable) fun_args.blocks[i];
@@ -385,7 +394,7 @@ public class Lambda : AST {
     }
 
     public override dynamic Eval(Context ctx) {
-        Context local_ctx = new Context();
+        Context local_ctx = ctx.Clone();
 
         // https://github.com/matcom/programming/tree/main/projects/hulk#variables
         // "( ... ) Fuera de una expresión let-in las variables dejan de existir. ( ... )"
@@ -801,7 +810,7 @@ class Log : FunctionDeclaration {
     ) {}
 }
 
-// Adding new tokens, you say???
+// Adding new tokens, you say?
 // nyahahahaha
 class True : VariableDeclaration {
 
