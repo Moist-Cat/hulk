@@ -103,7 +103,7 @@ public class Lexer {
     public int column;
 
     public static HashSet<string> LITERALS = new HashSet<string>{Tokens.STRING, Tokens.INTEGER, Tokens.FLOAT};
-    public static HashSet<string> UNARY = new HashSet<string>{Tokens.MINUS, Tokens.INTEGER, Tokens.FLOAT};
+    public static HashSet<string> UNARY = new HashSet<string>{Tokens.MINUS, Tokens.NOT};
     public static HashSet<string> CONDITIONALS = new HashSet<string>{Tokens.EQUALS, Tokens.HIGHER, Tokens.LOWER};
     public static HashSet<string> OPERATIONS = new HashSet<string>{
         Tokens.MULT,

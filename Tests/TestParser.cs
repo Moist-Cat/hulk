@@ -140,9 +140,16 @@ public class TestParser
     [Fact]
     public void TestLocalContext() {
         var result = this._Interpret("function x() => 5; function blob(x) => x;blob(3);");
-	Assert.Equal(3, result);
+        Assert.Equal(3, result);
         result = this._Interpret("var x = 5; function blob() => x;blob();");
-	Assert.Equal(2, result);
+        Assert.Equal(5, result);
     }
 
+    [Fact]
+    public void TestMemeEdgeCase() {
+        var result = this._Interpret("-5 - 3;");
+        Assert.Equal(-8, result);
+        result = this._Interpret("-5 - -3;");
+        Assert.Equal(-2, result);
+    }
 }

@@ -641,11 +641,11 @@ public class Parser {
         // check unary first
         if (token.type == Tokens.MINUS) {
             this.Eat(Tokens.MINUS);
-            node = new ChangeSign(this.Expr());
+            node = new ChangeSign(this.Term());
         }
         else if (token.type == Tokens.NOT) {
             this.Eat(Tokens.NOT);
-            node = new Negate(this.Expr());
+            node = new Negate(this.Term());
         }
         else if (Lexer.LITERALS.Contains(token.type)) {
             node = this.LiteralNode();
