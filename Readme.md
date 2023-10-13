@@ -25,6 +25,13 @@ Funciona en GNU/Linux.
 3. 
 
     print("hello world")
+    
+## Testing
+```
+cd Tests
+dotnet test     
+```
+
 
 ## Cómo funciona?
 1. El Lexer lee el texto enviado y lo convierte en tokens
